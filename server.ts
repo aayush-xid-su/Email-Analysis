@@ -32,6 +32,25 @@ const app = express();
 
 app.use(express.json({ limit: "20mb" }));
 
+// Normalize request URLs for seamless Vercel integration and general routing resilience
+app.use((req, res, next) => {
+  // 1. If Vercel or another proxy sets the original path in an alignment header, retrieve it
+  const matchedPath = req.headers["x-matched-path"] as string | undefined;
+  if (matchedPath && matchedPath !== req.url) {
+    req.url = matchedPath;
+  }
+
+  // 2. Normalize req.url to ensure it always starts with /api for backend route matching
+  if (req.url && !req.url.startsWith("/api") && !req.url.startsWith("/_next") && !req.url.startsWith("/static")) {
+    const apiSubpaths = ["stats", "emails", "analyze", "iocs", "gmail", "auth"];
+    const firstPart = req.url.split("/")[1]?.split("?")[0];
+    if (firstPart && apiSubpaths.includes(firstPart)) {
+      req.url = `/api` + req.url;
+    }
+  }
+  next();
+});
+
 // Initialize Gemini SDK
 let ai: GoogleGenAI | null = null;
 if (process.env.GEMINI_API_KEY) {
