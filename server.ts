@@ -34,13 +34,23 @@ app.use(express.json({ limit: "20mb" }));
 
 // Normalize request URLs for seamless Vercel integration and general routing resilience
 app.use((req, res, next) => {
-  // 1. If Vercel or another proxy sets the original path in an alignment header, retrieve it
-  const matchedPath = req.headers["x-matched-path"] as string | undefined;
-  if (matchedPath && matchedPath !== req.url) {
-    req.url = matchedPath;
+  // 1. Recover the original requested path under Vercel serverless routing
+  const vercelForwardedPath = req.headers["x-vercel-forwarded-path"] as string | undefined;
+  if (vercelForwardedPath) {
+    req.url = vercelForwardedPath;
+  } else {
+    const forwardedUrl = req.headers["x-forwarded-url"] as string | undefined;
+    if (forwardedUrl) {
+      req.url = forwardedUrl;
+    }
   }
 
-  // 2. Normalize req.url to ensure it always starts with /api for backend route matching
+  // 2. Safely normalize any Vercel redundant prefixes
+  if (req.url && req.url.startsWith("/api/index")) {
+    req.url = req.url.replace("/api/index", "/api");
+  }
+
+  // 3. Normalize req.url to ensure it always starts with /api for backend route matching
   if (req.url && !req.url.startsWith("/api") && !req.url.startsWith("/_next") && !req.url.startsWith("/static")) {
     const apiSubpaths = ["stats", "emails", "analyze", "iocs", "gmail", "auth"];
     const firstPart = req.url.split("/")[1]?.split("?")[0];
