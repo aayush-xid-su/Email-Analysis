@@ -1,0 +1,6 @@
+{
+  "name": "MailRecon",
+  "description": "Enterprise-grade SOC Email Threat Intelligence Platform with SPF/DKIM/DMARC parsing, domain reputation lookups, file attachment scanners, indicator of compromise (IOC) extraction, and AI-powered forensics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
