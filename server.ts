@@ -34,39 +34,19 @@ app.use(express.json({ limit: "20mb" }));
 
 // Normalize request URLs for seamless Vercel integration and general routing resilience
 app.use((req, res, next) => {
-  // 1. Recover the original requested path under Vercel serverless routing
-  const vercelForwardedPath = req.headers["x-vercel-forwarded-path"] as string | undefined;
-  if (vercelForwardedPath) {
-    req.url = vercelForwardedPath;
-  } else {
-    const forwardedUrl = req.headers["x-forwarded-url"] as string | undefined;
-    if (forwardedUrl) {
-      req.url = forwardedUrl;
+  if (process.env.VERCEL === "1") {
+    // 1. Recover the original requested path under Vercel serverless routing
+    const matchedPath = (req.headers["x-matched-path"] as string) || (req.headers["x-vercel-forwarded-path"] as string);
+    if (matchedPath) {
+      // Retain the original query string if present on the request url
+      const queryIdx = req.url.indexOf("?");
+      const queryString = queryIdx !== -1 ? req.url.substring(queryIdx) : "";
+      req.url = matchedPath.split("?")[0] + queryString;
     }
-  }
 
-  // Ensure req.url only contains the relative pathname and search query, eliminating protocol and host/port
-  if (req.url) {
-    try {
-      // Handles both absolute URLs (e.g., https://host/path?query) and relative paths gracefully
-      const parsedUrl = new URL(req.url, "http://localhost");
-      req.url = parsedUrl.pathname + parsedUrl.search;
-    } catch (e) {
-      // Keep as-is if parsing fails
-    }
-  }
-
-  // 2. Safely normalize any Vercel redundant prefixes
-  if (req.url && req.url.startsWith("/api/index")) {
-    req.url = req.url.replace("/api/index", "/api");
-  }
-
-  // 3. Normalize req.url to ensure it always starts with /api for backend route matching
-  if (req.url && !req.url.startsWith("/api") && !req.url.startsWith("/_next") && !req.url.startsWith("/static")) {
-    const apiSubpaths = ["stats", "emails", "analyze", "iocs", "gmail", "auth"];
-    const firstPart = req.url.split("/")[1]?.split("?")[0];
-    if (firstPart && apiSubpaths.includes(firstPart)) {
-      req.url = `/api` + req.url;
+    // 2. Safely normalize any Vercel redundant prefixes
+    if (req.url && req.url.startsWith("/api/index")) {
+      req.url = req.url.replace("/api/index", "/api");
     }
   }
   next();
