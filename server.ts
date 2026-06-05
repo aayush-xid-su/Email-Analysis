@@ -45,6 +45,17 @@ app.use((req, res, next) => {
     }
   }
 
+  // Ensure req.url only contains the relative pathname and search query, eliminating protocol and host/port
+  if (req.url) {
+    try {
+      // Handles both absolute URLs (e.g., https://host/path?query) and relative paths gracefully
+      const parsedUrl = new URL(req.url, "http://localhost");
+      req.url = parsedUrl.pathname + parsedUrl.search;
+    } catch (e) {
+      // Keep as-is if parsing fails
+    }
+  }
+
   // 2. Safely normalize any Vercel redundant prefixes
   if (req.url && req.url.startsWith("/api/index")) {
     req.url = req.url.replace("/api/index", "/api");
